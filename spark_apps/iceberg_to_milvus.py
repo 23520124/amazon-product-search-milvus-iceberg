@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, udf
+from pyspark.sql.functions import col, udf, monotonically_increasing_id
 from pyspark.sql.types import ArrayType, FloatType
 from sentence_transformers import SentenceTransformer
 
 print("--- KHỞI TẠO TẦNG TÍNH TOÁN SPARK AI PIPELINE (SHADED CLEAN CATALOG) ---")
 
-# Khởi tạo Spark Session sử dụng cấu hình Hadoop Catalog sạch, đồng nhất với Phase 1
 spark = SparkSession.builder \
   .appName("IcebergToMilvus_AI_Pipeline") \
+  .config("spark.driver.memory", "3g") \
+  .config("spark.executor.memory", "2g") \
   .config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions") \
   .config("spark.sql.catalog.local", "org.apache.iceberg.spark.SparkCatalog") \
   .config("spark.sql.catalog.local.type", "hadoop") \
@@ -23,12 +24,13 @@ spark = SparkSession.builder \
   .config("spark.sql.caseSensitive", "true") \
   .getOrCreate()
 
-# Nạp mô hình Sentence Transformers từ thư mục lưu trữ Offline an toàn trên máy thật
 print("--- ĐANG NẠP MÔ HÌNH AI OFFLINE TỪ LƯU TRỮ LOCAL ---")
 model = SentenceTransformer('/home/iceberg/data/all-MiniLM-L6-v2')
 
-print("--- ĐỌC DỮ LIỆU TỪ BẢNG ICEBERG HADOOP ---")
-df_reviews = spark.table("local.amazon.reviews").limit(5000)
+print("--- ĐỌC DỮ LIỆU TỪ TẦNG SILVER ICEBERG ---")
+df_silver = spark.table("local.amazon.all_beauty_silver")
+
+df_subset = df_silver
 
 print("--- TIẾN HÀNH TÍNH TOÁN SONG SONG VECTOR EMBEDDINGS (384 DIM) ---")
 def compute_embedding(text_content):
@@ -37,20 +39,39 @@ def compute_embedding(text_content):
     return model.encode(text_content).tolist()
 
 embedding_udf = udf(compute_embedding, ArrayType(FloatType()))
-df_vectorized = df_reviews.withColumn("vector", embedding_udf(col("text")))
+
+df_vectorized = df_subset.withColumn("vector", embedding_udf(col("text_for_ai"))) \
+                         .withColumn("id", monotonically_increasing_id())
+
+# Chỉ chọn ra những cột cần thiết mang vào tầng gold
+df_final_gold = df_vectorized.select(
+    col("id"), 
+    col("item_id"), 
+    col("title"), 
+    col("brand"), 
+    col("price").cast("float"), 
+    col("image_url"), 
+    col("vector")
+).na.fill({
+    "item_id": "Unknown",
+    "title": "Sản phẩm không có tên",
+    "brand": "N/A",
+    "price": 0.0,
+    "image_url": ""
+})
 
 print("--- GHI ĐỒNG THỜI VÀO CƠ SỞ DỮ LIỆU VECTOR MILVUS ---")
-df_vectorized.write.format("milvus") \
+df_final_gold.write.format("milvus") \
   .option("milvus.host", "milvus-standalone") \
   .option("milvus.port", "19530") \
   .option("milvus.user", "root") \
   .option("milvus.password", "Milvus") \
-  .option("milvus.collection.name", "amazon_reviews_ai") \
+  .option("milvus.collection.name", "amazon_beauty_gold") \
   .option("milvus.collection.vectorField", "vector") \
   .option("milvus.collection.vectorDim", "384") \
-  .option("milvus.collection.primaryKeyField", "user_id") \
+  .option("milvus.collection.primaryKeyField", "id") \
   .mode("append") \
   .save()
 
-print("--- TRẠNG THÁI: THÀNH CÔNG RỰC RỠ! HÃY MỞ ATTU ĐỂ KIỂM TRA ---")
+print("--- TRẠNG THÁI: THÀNH CÔNG ---")
 spark.stop()
