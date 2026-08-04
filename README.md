@@ -1,6 +1,15 @@
-# AI-Powered Data Lakehouse: Semantic Product Search at Scale
+<div align="center">
+  <h1>AI-Powered Data Lakehouse & Semantic Search 🌊🔍</h1>
+  <p><em>An End-to-End Spark AI Pipeline & Modern Data Lakehouse on MinIO and Milvus</em></p>
 
-This repository implements an end-to-end modern Data Lakehouse and AI Vector Search pipeline to clean, process, and perform real-time semantic queries on Amazon product data. It demonstrates a cloud-native architecture combining distributed batch computing with high-performance similarity search.
+[![Apache Spark](https://img.shields.io/badge/PySpark-Data_Processing-FDEE21?logo=apachespark&logoColor=black)]()
+[![Apache Iceberg](https://img.shields.io/badge/Apache%20Iceberg-Table%20Format-blue?logo=apacheiceberg&logoColor=white)]()
+[![MinIO](https://img.shields.io/badge/MinIO-S3%20Object%20Storage-C92847?logo=minio&logoColor=white)]()
+[![Milvus](https://img.shields.io/badge/Milvus-Vector%20Database-00A2E8?logo=milvus&logoColor=white)]()
+[![Docker](https://img.shields.io/badge/Docker-Infrastructure-2CA5E0?logo=docker&logoColor=white)]()
+[![Hugging Face](https://img.shields.io/badge/Hugging%20Face-AI%20Transformers-FFD21E?logo=huggingface&logoColor=black)]()
+
+</div>
 
 ---
 
@@ -174,15 +183,15 @@ The end-to-end data pipeline is structured as follows:
 
 ##### 1. System Architecture
 
-_(Place your integrated Spark + Iceberg + MinIO + Milvus architecture diagram here)_
+_image_
 
 ##### 2. MinIO Data Lakehouse Storage
 
-_(Place your MinIO Console screenshot showing the `amazon-lakehouse` bucket with 213.2 MiB and 27 objects here)_
+_image_
 
 ##### 3. Attu Milvus Management Console
 
-_(Place your Attu screenshot depicting the loaded `amazon_reviews_ai` collection with its 384-dimensional schema and HNSW index state here)_
+_image_
 
 ---
 
